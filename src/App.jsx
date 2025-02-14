@@ -29,7 +29,7 @@ function AssetList() {
       <div className="space-y-4">
         {assets.map(asset => (
           <div key={asset.id} className="p-4 border rounded hover:bg-gray-50">
-            <Link to={`/asset/${asset.id}`} className="block">
+            <Link to={`/asset/${asset.asset_code}`} className="block">
               <div className="font-medium">{asset.name}</div>
               <div className="text-sm text-gray-500">Code: {asset.asset_code}</div>
             </Link>

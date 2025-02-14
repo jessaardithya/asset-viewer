@@ -25,8 +25,7 @@ const AssetViewer = () => {
       try {
         const { data, error } = await supabase
           .from("assets")
-          .select(
-            `
+          .select(`
             id,
             asset_code,
             name,
@@ -35,31 +34,16 @@ const AssetViewer = () => {
             status,
             purchase_date,
             borrowable,
-            category:categories(name),
-            asset_images!inner(path)
-          `
-          )
-          .eq("id", assetId)
+            category:categories(name)
+          `)
+          .eq("asset_code", assetId)
           .single();
-
+  
         if (error) throw error;
-
-        // Debug the data
+  
+        // Debug fetched data
         console.log("Asset data:", data);
-        console.log("Image path:", data.asset_images?.[0]?.path);
-
-        if (data?.asset_images?.[0]?.path) {
-          const imagePath = data.asset_images[0].path;
-          console.log("Image path from DB:", imagePath);
-
-          const { data: publicUrl } = supabase.storage
-            .from("asset_images") // your bucket name
-            .getPublicUrl(imagePath);
-
-          console.log("Generated URL:", publicUrl);
-          setImageUrl(publicUrl.publicUrl);
-        }
-
+  
         setAsset(data);
       } catch (err) {
         console.error("Error:", err);
@@ -68,9 +52,10 @@ const AssetViewer = () => {
         setLoading(false);
       }
     };
-
+  
     if (assetId) fetchAsset();
   }, [assetId]);
+  
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
@@ -95,41 +80,13 @@ const AssetViewer = () => {
           </p>
           <div className="w-24 h-1 bg-blue-600 mx-auto rounded-full"></div>
         </div>
-        <div className="grid md:grid-cols-2 gap-8">
-          <div className="order-2 md:order-1">
-            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-              {imageUrl ? (
-                <img
-                  src={imageUrl}
-                  alt={asset.name}
-                  className="w-full h-[500px] object-contain bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-4"
-                  onError={(e) => {
-                    console.error("Image Load Error Details:", {
-                      src: e.target.src,
-                      error: e.type,
-                    });
-                    e.target.src = "path/to/fallback/image.png";
-                  }}
-                />
-              ) : (
-                <div className="h-[500px] bg-gray-50 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-300">
-                  <img 
-                    src="/placeholder-image.svg" 
-                    alt="No image placeholder"
-                    className="w-24 h-24 mb-4 opacity-50"
-                  />
-                  <span className="text-gray-500 font-medium">No Image Available</span>
-                  <span className="text-gray-400 text-sm mt-2">Asset image has not been uploaded</span>
-                </div>
-              )}
-            </div>
-          </div>
+        <div className="grid">
           <div className="order-1 md:order-2">
             <div className="bg-white rounded-2xl shadow-2xl p-8">
               {/* Company Information */}
 
               <div className="mb-6">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-center items-start">
                   <div>
                     <h1 className="text-4xl font-bold text-gray-900 mb-2">
                       {asset.name}
@@ -140,40 +97,9 @@ const AssetViewer = () => {
                         Asset Code: {asset.asset_code}
                       </span>
                     </div>
-                    <StatusBadge status={asset.status} />
                   </div>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <DetailItem
-                  icon={<Star className="text-yellow-500" />}
-                  label="Category"
-                  value={asset.category?.name || "Uncategorized"}
-                />
-                <DetailItem
-                  icon={<CheckCircle className="text-green-500" />}
-                  label="Condition"
-                  value={asset.condition}
-                />
-                <DetailItem
-                  icon={<Calendar className="text-blue-500" />}
-                  label="Purchase Date"
-                  value={new Date(asset.purchase_date).toLocaleDateString()}
-                />
-                <DetailItem
-                  icon={
-                    asset.borrowable ? (
-                      <CheckCircle className="text-green-500" />
-                    ) : (
-                      <XCircle className="text-red-500" />
-                    )
-                  }
-                  label="Borrowable"
-                  value={asset.borrowable ? "Yes" : "No"}
-                />
-              </div>
-
               <div className="bg-blue-50 p-6 rounded-xl mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                   <Building2 className="mr-2 text-blue-500" />
@@ -188,16 +114,6 @@ const AssetViewer = () => {
                   admin@bluepowertechnology.com
                 </p>
               </div>
-
-              {asset.desc && (
-                <div className="bg-indigo-50 p-6 rounded-xl">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-                    <AlertTriangle className="mr-2 text-indigo-500" />
-                    Asset Description
-                  </h3>
-                  <p className="text-gray-700 leading-relaxed">{asset.desc}</p>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -206,15 +122,6 @@ const AssetViewer = () => {
   );
 };
 
-const DetailItem = ({ icon, label, value }) => (
-  <div className="bg-gray-50 p-4 rounded-xl flex items-center space-x-4">
-    <div className="flex-shrink-0">{icon}</div>
-    <div>
-      <dt className="text-sm font-medium text-gray-500">{label}</dt>
-      <dd className="text-lg font-semibold text-gray-900">{value}</dd>
-    </div>
-  </div>
-);
 
 const LoadingState = () => (
   <div className="min-h-screen bg-indigo-50 flex items-center justify-center">
@@ -247,39 +154,5 @@ const NotFoundState = () => (
   </div>
 );
 
-const StatusBadge = ({ status }) => {
-  const statusStyles = {
-    available: {
-      bg: "bg-green-100",
-      text: "text-green-800",
-      icon: <CheckCircle className="inline-block mr-2 text-green-600" />,
-    },
-    borrowed: {
-      bg: "bg-yellow-100",
-      text: "text-yellow-800",
-      icon: <AlertTriangle className="inline-block mr-2 text-yellow-600" />,
-    },
-    maintenance: {
-      bg: "bg-red-100",
-      text: "text-red-800",
-      icon: <XCircle className="inline-block mr-2 text-red-600" />,
-    },
-  };
-
-  const style = statusStyles[status.toLowerCase()] || {
-    bg: "bg-gray-100",
-    text: "text-gray-800",
-    icon: null,
-  };
-
-  return (
-    <span
-      className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold uppercase tracking-wide ${style.bg} ${style.text}`}
-    >
-      {style.icon}
-      {status}
-    </span>
-  );
-};
 
 export default AssetViewer;
